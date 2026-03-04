@@ -1,7 +1,11 @@
-# 使用 Maven 3.5.4 + JDK 8 作为基础镜像
 FROM maven:3.5.4-jdk-8
 
-# 安装 Node.js 所需依赖：curl 用于下载，xz-utils 用于解压 .tar.xz 文件
+# 修复 Debian Stretch 源：将原源指向 archive.debian.org（因为 stretch 已归档）
+RUN sed -i 's/deb.debian.org/archive.debian.org/g' /etc/apt/sources.list && \
+    sed -i '/security.debian.org/d' /etc/apt/sources.list && \
+    echo "deb http://archive.debian.org/debian-security stretch/updates main" >> /etc/apt/sources.list
+
+# 安装 Node.js 所需依赖：curl 和 xz-utils
 RUN apt-get update && \
     apt-get install -y curl xz-utils && \
     rm -rf /var/lib/apt/lists/*
@@ -24,4 +28,4 @@ RUN npm install -g yarn && \
     # 清理 npm 缓存以减小镜像体积
     npm cache clean --force
 
-# 基础镜像默认的 CMD 是 ["mvn"]，这里保持原样，不做修改
+# 基础镜像默认的 CMD 是 ["mvn"]，无需修改
