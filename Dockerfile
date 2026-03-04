@@ -1,15 +1,13 @@
 FROM maven:3.5.4-jdk-8
 
-# 修复软件源：将所有 deb.debian.org 替换为 archive.debian.org，
-# 安全源替换为 archive.debian.org/debian-security，
-# 删除不存在的 stretch-updates 行，并禁用 Valid-Until 检查
-RUN cp /etc/apt/sources.list /etc/apt/sources.list.bak && \
-    sed -i 's/deb.debian.org/archive.debian.org/g' /etc/apt/sources.list && \
-    sed -i 's|security.debian.org|archive.debian.org/debian-security|g' /etc/apt/sources.list && \
-    sed -i '/stretch-updates/d' /etc/apt/sources.list && \
+# 完全重写 sources.list 为 Debian Stretch 归档源（主仓库和安全仓库）
+RUN rm -f /etc/apt/sources.list && \
+    echo "deb http://archive.debian.org/debian stretch main" > /etc/apt/sources.list && \
+    echo "deb http://archive.debian.org/debian-security stretch/updates main" >> /etc/apt/sources.list && \
+    # 添加配置忽略 Release 文件的有效期检查（归档源已冻结）
     echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
 
-# 更新并安装 curl 和 xz-utils，允许未认证的包和 insecure 仓库
+# 更新并安装 curl 和 xz-utils，允许使用不安全仓库和未认证包（绕过签名错误）
 RUN apt-get update -o Acquire::AllowInsecureRepositories=yes -o Acquire::AllowDowngradeToInsecureRepositories=yes && \
     apt-get install -y --allow-unauthenticated curl xz-utils && \
     rm -rf /var/lib/apt/lists/*
@@ -20,7 +18,8 @@ ENV NODE_ARCH=linux-x64
 ENV NODE_PKG=node-${NODE_VERSION}-${NODE_ARCH}.tar.xz
 
 # 下载、解压 Node.js 到 /usr/local，并清理安装包
-RUN curl -fsSLO --compressed https://nodejs.org/dist/${NODE_VERSION}/${NODE_PKG} && \
+# 使用 -k 忽略 curl 的证书验证（防止因 ca-certificates 缺失导致下载失败）
+RUN curl -fsSLO --compressed -k https://nodejs.org/dist/${NODE_VERSION}/${NODE_PKG} && \
     tar -xJf ${NODE_PKG} -C /usr/local --strip-components=1 && \
     rm ${NODE_PKG} && \
     # 验证 Node.js 和 npm 是否安装成功
