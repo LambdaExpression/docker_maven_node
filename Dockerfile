@@ -1,13 +1,17 @@
 FROM maven:3.5.4-jdk-8
 
-# 修复 Debian Stretch 源：将原源指向 archive.debian.org（因为 stretch 已归档）
-RUN sed -i 's/deb.debian.org/archive.debian.org/g' /etc/apt/sources.list && \
-    sed -i '/security.debian.org/d' /etc/apt/sources.list && \
-    echo "deb http://archive.debian.org/debian-security stretch/updates main" >> /etc/apt/sources.list
+# 修复软件源：将所有 deb.debian.org 替换为 archive.debian.org，
+# 安全源替换为 archive.debian.org/debian-security，
+# 删除不存在的 stretch-updates 行，并禁用 Valid-Until 检查
+RUN cp /etc/apt/sources.list /etc/apt/sources.list.bak && \
+    sed -i 's/deb.debian.org/archive.debian.org/g' /etc/apt/sources.list && \
+    sed -i 's|security.debian.org|archive.debian.org/debian-security|g' /etc/apt/sources.list && \
+    sed -i '/stretch-updates/d' /etc/apt/sources.list && \
+    echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
 
-# 安装 Node.js 所需依赖：curl 和 xz-utils
-RUN apt-get update && \
-    apt-get install -y curl xz-utils && \
+# 更新并安装 curl 和 xz-utils，允许未认证的包和 insecure 仓库
+RUN apt-get update -o Acquire::AllowInsecureRepositories=yes -o Acquire::AllowDowngradeToInsecureRepositories=yes && \
+    apt-get install -y --allow-unauthenticated curl xz-utils && \
     rm -rf /var/lib/apt/lists/*
 
 # 设置 Node.js 版本和架构
