@@ -1,0 +1,6 @@
+.DS_Store
+clash-config/cache.db
+.idea
+.svn
+*.swp
+**/*.swp
